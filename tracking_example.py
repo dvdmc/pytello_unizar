@@ -1,15 +1,17 @@
-from djitellopy import tello
-import cv2
 import threading
-from ultralytics import YOLO
 import numpy as np
 import time
+from djitellopy import tello
+from ultralytics import YOLO
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 SPEED = 10
+FLIGHT_ENABLED = False
 
 IMAGE_SIZE = (940, 720)
 F_X = 940
-CONTROL_HZ = 10 # Hz
+CONTROL_HZ = 10  # Hz
 
 MODEL_NAME = "yolov8n.pt"
 DETECTION_QUERY = "cup"
@@ -18,9 +20,10 @@ DETECTION_QUERY = "cup"
 ESTIMATED_HEIGHT = 0.12
 ESTIMATED_WIDTH = 0.08
 
-# We only move the drone if the control signal is greater than 
+# We only move the drone if the control signal is greater than
 # this threshold in meters
 DESIRED_DISTANCE = 0.5
+
 
 class DroneControl:
     def __init__(self):
@@ -31,13 +34,16 @@ class DroneControl:
         self.bbox = None  # Bounding box coordinates on the frame
         self.bbox_mutex = threading.Lock()
 
-        self.control = np.zeros((4,)) # x, y, z, yaw
+        self.control = np.zeros((4,))  # x, y, z, yaw
         self.running = False
 
     def takeoff(self):
         self.tello.takeoff()
 
     def _checkSendControl(self):
+        if not FLIGHT_ENABLED:
+            return
+
         # Transform command to cm
         self.control *= 100
 
@@ -46,7 +52,9 @@ class DroneControl:
         is_y_valid = abs(self.control[1]) > 20
 
         if is_x_valid and is_y_valid:
-            self.tello.go_xyz_speed(int(self.control[0]), int(self.control[1]), int(self.control[2]), SPEED)
+            self.tello.go_xyz_speed(
+                int(self.control[0]), int(self.control[1]), int(self.control[2]), SPEED
+            )
         else:
             if is_x_valid:
                 self._moveX(int(self.control[0]))
@@ -71,9 +79,9 @@ class DroneControl:
 
     def _loopHeightLocked(self):
         """
-            Execute the control policy. If the BBox moves left or right, apply that control.
-            If the BBox moves up or down, since the drone is locked in height, move backward.
-            Try to keep the estimated distance based on the size of the detection.
+        Execute the control policy. If the BBox moves left or right, apply that control.
+        If the BBox moves up or down, since the drone is locked in height, move backward.
+        Try to keep the estimated distance based on the size of the detection.
         """
         while self.running:
             if self.bbox is not None:
@@ -89,10 +97,12 @@ class DroneControl:
                 self.control[1] = u_x * est_dist / (np.sqrt(F_X**2 + u_x**2))
                 # self.control[0] = u_y * est_dist / (np.sqrt(F_X**2 + u_y**2))
 
-                self.control[0] = - (DESIRED_DISTANCE - est_dist)
-                # self._checkSendControl()
+                print(f"Control: {self.control}")
+                
+                self.control[0] = -(DESIRED_DISTANCE - est_dist)
+                self._checkSendControl()
 
-            time.sleep(1/CONTROL_HZ)
+            time.sleep(1 / CONTROL_HZ)
 
     def start(self):
         self.running = True
@@ -103,94 +113,90 @@ class DroneControl:
         self.running = False
         self.tello.streamoff()
         self.control_thread.join()
-                
+
 
 class VideoDetector:
 
     def __init__(self, drone_control):
         self.drone_control = drone_control
         self.drone_control.tello.streamon()
-        self.webcam = cv2.VideoCapture(0)
-        self.video_mutex = threading.Lock()
-        self.current_frame = None
+
+        # self.webcam = cv2.VideoCapture(0)
         self.model = YOLO(MODEL_NAME)
         self.running = True  # Control flag
-        
-        self.video_thread = threading.Thread(target=self.stream_video)
-        self.video_thread.start()
 
-        self.detection_thread = threading.Thread(target=self.detect)
-        self.detection_thread.start()
-        
+    def run(self):
+        """
+        This has a latency on the ordert of 1-2 ms
+        djitellopy opens a video stream and delaying it will only make
+        frames arrive slower and fill a buffer but it won't slow down the video.
+        """
 
-    def stream_video(self):
-        """
-            This has a latency on the ordert of 1-2 ms
-            djitellopy opens a video stream and delaying it will only make
-            frames arrive slower and fill a buffer but it won't slow down the video.
-        """
+        plt.ion()  # Enable interactive mode
+        self.fig, self.ax = plt.subplots()
+        img_display = self.ax.imshow(
+            np.zeros((720, 940, 3), dtype=np.uint8)
+        )  # Placeholder image
+        self.detection_rect = patches.Rectangle( # Dummy patch
+            (0, 0), 0, 0,
+            linewidth=2,
+            edgecolor="red",
+            facecolor="none",
+        )
+        self.ax.add_patch(self.detection_rect)  # Add the rectangle to the plot
+
         while self.running:
-                frame = self.drone_control.tello.get_frame_read().frame
-                
-                # ret, frame = self.webcam.read()
-                with self.video_mutex:
-                    self.current_frame = frame
-                frame_cv2 = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                cv2.imshow("Frame", frame_cv2)
-                if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
-                    self.stop("video")
+            frame = self.drone_control.tello.get_frame_read().frame
+            detection_frame = self.detect(frame)
+            img_display.set_data(detection_frame)  # Update displayed image
+            plt.draw()  # Trigger the plot to update
+            plt.pause(0.001)
 
-    def detect(self):
+    def detect(self, frame):
         """
-            YOLO has a latency on the order of 45-50 ms
-            on an Intel i9 CPU
+        YOLO has a latency on the order of 45-50 ms
+        on an Intel i9 CPU
         """
         # TODO: Include a Kalman filter
-        while self.running:
-            if self.current_frame is not None:
-                is_plot = False
-                with self.video_mutex:
-                    frame = self.current_frame
-                results = self.model(frame, verbose=False)
-                for result in results:
-                    boxes = result.boxes
+        results = self.model(frame, verbose=False)
 
-                    set_bbox = False
+        for result in results:
+            boxes = result.boxes
+            set_bbox = False
+
+            for box in boxes:
+                if result.names[box.cls.item()] == DETECTION_QUERY:
+                    is_plot = True
+                    x1, y1, x2, y2 = box.xyxy[0]
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                     
-                    for box in boxes:
-                        if result.names[box.cls.item()] == DETECTION_QUERY:
-                            is_plot = True
-                            x1, y1, x2, y2 = box.xyxy[0]
-                            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                            if not set_bbox:
-                                with self.drone_control.bbox_mutex:
-                                    self.drone_control.bbox = (x1, y1, x2 - x1, y2 - y1)
-                if is_plot:
-                    frame_cv2 = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    cv2.imshow("Detection", frame_cv2)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
-                        self.stop("detection")
+                    self.detection_rect.set_xy((x1,y1))
+                    self.detection_rect.set_width(x2 - x1)
+                    self.detection_rect.set_height(y2 - y1)
 
-    def stop(self, thread):
-        """Stops the detection and video threads."""
+                    if not set_bbox:
+                        with self.drone_control.bbox_mutex:
+                            self.drone_control.bbox = (x1, y1, x2 - x1, y2 - y1)
+                            set_bbox = True
+            
+            if not set_bbox:
+                with self.drone_control.bbox_mutex:
+                    self.drone_control.bbox = None
+
+        return frame
+
+    def stop(self):
         self.running = False
-        if thread == "video":
-            self.detection_thread.join()
-        elif thread == "detection":
-            self.video_thread.join()
-
         if self.drone_control.running:
             self.drone_control.stop()
-
         # self.webcam.release()
-        cv2.destroyAllWindows()
         exit()
+
 
 if __name__ == "__main__":
     drone_control = DroneControl()
-    # drone_control.takeoff()
+    if FLIGHT_ENABLED:
+        drone_control.takeoff()
     video_detector = VideoDetector(drone_control)
     drone_control.start()
-
-    
+    video_detector.run()
