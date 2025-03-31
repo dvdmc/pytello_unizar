@@ -7,22 +7,22 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 SPEED = 10
-FLIGHT_ENABLED = False
+FLIGHT_ENABLED = True
 
 IMAGE_SIZE = (940, 720)
 F_X = 940
 CONTROL_HZ = 10  # Hz
 
-MODEL_NAME = "yolov8n.pt"
-DETECTION_QUERY = "cup"
+MODEL_NAME = "yolov8m.pt"
+DETECTION_QUERY = "bottle"
 
 # We compute the estimated distance based on the estimated size of the object
-ESTIMATED_HEIGHT = 0.12
-ESTIMATED_WIDTH = 0.08
+ESTIMATED_HEIGHT = 0.205
+ESTIMATED_WIDTH = 0.07
 
 # We only move the drone if the control signal is greater than
 # this threshold in meters
-DESIRED_DISTANCE = 0.5
+DESIRED_DISTANCE = 0.75
 
 
 class DroneControl:
@@ -45,13 +45,15 @@ class DroneControl:
             return
 
         # Transform command to cm
-        self.control *= 100
+        self.control[:2] *= 100
+        self.control[3] = self.control[3] * 180 / np.pi
 
         # The command is only valid between -20cm and 20cm
         is_x_valid = abs(self.control[0]) > 20
         is_y_valid = abs(self.control[1]) > 20
 
         if is_x_valid and is_y_valid:
+            print("Sent go_xyz_speed command")
             self.tello.go_xyz_speed(
                 int(self.control[0]), int(self.control[1]), int(self.control[2]), SPEED
             )
@@ -62,19 +64,25 @@ class DroneControl:
                 self._moveY(int(self.control[1]))
 
         # TODO: Keep the object in view
-        # if np.linalg.norm(self.control[3]) > ANG_TH:
-        #     self.tello.rotate_clockwise(self.control[3])
+        print(f"Yaw: {self.control[3]}")
+        if abs(self.control[3]) > 5:
+            print("Sent rotate command")
+            self.tello.rotate_counter_clockwise(int(self.control[3]))
 
     def _moveX(self, dist):
         if dist > 0:
+            print("Sent forward command")
             self.tello.move_forward(abs(dist))
         else:
+            print("Sent backward command")
             self.tello.move_back(abs(dist))
 
     def _moveY(self, dist):
         if dist > 0:
+            print("Sent left command")
             self.tello.move_left(abs(dist))
         else:
+            print("Sent right command")
             self.tello.move_right(abs(dist))
 
     def _loopHeightLocked(self):
@@ -84,6 +92,7 @@ class DroneControl:
         Try to keep the estimated distance based on the size of the detection.
         """
         while self.running:
+            self.control = np.zeros((4,))
             if self.bbox is not None:
                 x, y, w, h = self.bbox
                 center_x = x + w // 2
@@ -97,9 +106,17 @@ class DroneControl:
                 self.control[1] = u_x * est_dist / (np.sqrt(F_X**2 + u_x**2))
                 # self.control[0] = u_y * est_dist / (np.sqrt(F_X**2 + u_y**2))
 
-                print(f"Control: {self.control}")
-                
                 self.control[0] = -(DESIRED_DISTANCE - est_dist)
+                
+                self.control[3] = np.arcsin((u_x * est_dist / (np.sqrt(F_X**2 + u_x**2))) / est_dist)
+                
+                # If center is too low, command to land
+                print(center_y)
+                if(center_y > IMAGE_SIZE[1] * 0.8) and FLIGHT_ENABLED:
+                    self.tello.land()
+
+                # print(f"Control: {self.control}. Yaw: {self.control[3] * 180 / np.pi}")
+                
                 self._checkSendControl()
 
             time.sleep(1 / CONTROL_HZ)
