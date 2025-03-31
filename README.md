@@ -18,7 +18,7 @@ source .venv/bin/activate
 Install the requirements:
 
 ```bash
-python -m pip -r requirements.txt install
+python -m pip install -r requirements.txt
 ```
 
 ## Usage
@@ -35,3 +35,5 @@ Turn on the Tello drone, connect from the computer to the WiFi point it creates 
 ```bash
 python tracking_example.py
 ```
+
+You should show the Tello the object to track. Notice that in order for the object to be in the frame, you need to place it lower than expected.
