@@ -14,11 +14,18 @@ F_X = 940
 CONTROL_HZ = 10  # Hz
 
 MODEL_NAME = "yolov8m.pt"
-DETECTION_QUERY = "bottle"
 
+DETECTION_DICTIONARY = {
+    "bottle": {"name": "bottle", "height": 0.205, "width": 0.07},
+    "orange": {"name": "orange", "height": 0.035, "width": 0.05},
+    "sports ball": {"name": "sports ball", "height": 0.20, "width": 0.20},
+}
+SELECTED_CLASS = "sports ball"
+
+DETECTION_QUERY = DETECTION_DICTIONARY[SELECTED_CLASS]["name"]
 # We compute the estimated distance based on the estimated size of the object
-ESTIMATED_HEIGHT = 0.205
-ESTIMATED_WIDTH = 0.07
+ESTIMATED_HEIGHT = DETECTION_DICTIONARY[SELECTED_CLASS]["height"]
+ESTIMATED_WIDTH = DETECTION_DICTIONARY[SELECTED_CLASS]["width"]
 
 # We only move the drone if the control signal is greater than
 # this threshold in meters
@@ -107,16 +114,18 @@ class DroneControl:
                 # self.control[0] = u_y * est_dist / (np.sqrt(F_X**2 + u_y**2))
 
                 self.control[0] = -(DESIRED_DISTANCE - est_dist)
-                
-                self.control[3] = np.arcsin((u_x * est_dist / (np.sqrt(F_X**2 + u_x**2))) / est_dist)
-                
+
+                self.control[3] = np.arcsin(
+                    (u_x * est_dist / (np.sqrt(F_X**2 + u_x**2))) / est_dist
+                )
+
                 # If center is too low, command to land
                 print(center_y)
-                if(center_y > IMAGE_SIZE[1] * 0.8) and FLIGHT_ENABLED:
+                if (center_y > IMAGE_SIZE[1] * 0.8) and FLIGHT_ENABLED:
                     self.tello.land()
 
                 # print(f"Control: {self.control}. Yaw: {self.control[3] * 180 / np.pi}")
-                
+
                 self._checkSendControl()
 
             time.sleep(1 / CONTROL_HZ)
@@ -154,8 +163,10 @@ class VideoDetector:
         img_display = self.ax.imshow(
             np.zeros((720, 940, 3), dtype=np.uint8)
         )  # Placeholder image
-        self.detection_rect = patches.Rectangle( # Dummy patch
-            (0, 0), 0, 0,
+        self.detection_rect = patches.Rectangle(  # Dummy patch
+            (0, 0),
+            0,
+            0,
             linewidth=2,
             edgecolor="red",
             facecolor="none",
@@ -186,8 +197,8 @@ class VideoDetector:
                     is_plot = True
                     x1, y1, x2, y2 = box.xyxy[0]
                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                    
-                    self.detection_rect.set_xy((x1,y1))
+
+                    self.detection_rect.set_xy((x1, y1))
                     self.detection_rect.set_width(x2 - x1)
                     self.detection_rect.set_height(y2 - y1)
 
@@ -195,7 +206,7 @@ class VideoDetector:
                         with self.drone_control.bbox_mutex:
                             self.drone_control.bbox = (x1, y1, x2 - x1, y2 - y1)
                             set_bbox = True
-            
+
             if not set_bbox:
                 with self.drone_control.bbox_mutex:
                     self.drone_control.bbox = None
