@@ -6,6 +6,13 @@ to keep the detected object at the center and at a desired distance.
 
 ## Install 
 
+Clone the repository:
+
+```bash
+git clone https://github.com/dvdmc/pytello_unizar
+cd pytello_unizar
+```
+
 Create a Python environment and activate it:
 
 ```bash
@@ -23,14 +30,23 @@ python -m pip install -r requirements.txt
 
 ## Usage
 
-Configure the parameters in the `tracking_example.py` script. Important ones are:
-- `DETECTION_QUERY`: The name of the class to detect. When using YOLO, the available classes are in `classes.txt`.
-- `ESTIMATED_HEIGHT` and `ESTIMATED_WIDTH`: These are the estimated height and width of the detected object. This will be used to estimate the distance to the object and compute the commands for the drone.
-- `DESIRED_DISTANCE`: The desired distance from the drone to the object.
+Configure the parameters in the `tracking_example.py` script. Adjust  Important ones are:
+- **Detection parameters:** They are configured by using the `DETECTION_DICTIONARY` with a list of possible objects, and the `SELECTED_CLASS` to choose one from the dictionary. You will need to add the name of the class from `classes.txt`, and the estimated height and width of the object. These will be used to estimate the distance to the object and compute the commands for the drone.
+- **Desired distance:** Adjust the variable `DESIRED_DISTANCE` from the drone to the object.
 
-**Notice:** The Tello drone is not able to perform movements below 20 cm. Thus, if the desired distance is too small, the drone might not be able to center the object and keep it in frame at the same time. The minimum recommended distance is 0.5 m
+**Notice:** The Tello drone is not able to perform movements below 20 cm. Thus, if the desired distance is too small, the drone might not be able to center the object and keep it in frame at the same time. The minimum recommended distance is 0.5 m, the best distance is 1 m if the object is large enough.
 
-Turn on the Tello drone, connect from the computer to the WiFi point it creates (e.g., ). Place the drone in a safe space for *taking off*, it will raise 1 m. Then, run the example:
+1. To download the model. Execute the script while connected to the internet:
+
+```bash
+python tracking_example.py
+```
+
+Once the model is downloaded, you can use `Ctrl+C` to exit the script.
+
+2. Turn on the Tello drone, connect from the computer to the WiFi point it creates (e.g., TELLO-XXXX). Then run the script to check if you can connect, the camera turns on and the drone detects the object.
+
+3. Change the variable `FLIGHT_ENABLED` to `True`. Place the drone in a safe space for *taking off*, it will raise 1 m. Then, run the example:
 
 ```bash
 python tracking_example.py

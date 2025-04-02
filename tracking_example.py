@@ -6,20 +6,25 @@ from ultralytics import YOLO
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-SPEED = 10
-FLIGHT_ENABLED = True
 
+# Camera parameters
 IMAGE_SIZE = (940, 720)
 F_X = 940
+
+# Control parameters
+FLIGHT_ENABLED = True
+SPEED = 10
 CONTROL_HZ = 10  # Hz
 
 MODEL_NAME = "yolov8m.pt"
 
+# Dictionary of configured classes. Adjust to your needs
 DETECTION_DICTIONARY = {
     "bottle": {"name": "bottle", "height": 0.205, "width": 0.07},
     "orange": {"name": "orange", "height": 0.035, "width": 0.05},
     "sports ball": {"name": "sports ball", "height": 0.20, "width": 0.20},
 }
+# Choose the class
 SELECTED_CLASS = "sports ball"
 
 DETECTION_QUERY = DETECTION_DICTIONARY[SELECTED_CLASS]["name"]
@@ -29,7 +34,7 @@ ESTIMATED_WIDTH = DETECTION_DICTIONARY[SELECTED_CLASS]["width"]
 
 # We only move the drone if the control signal is greater than
 # this threshold in meters
-DESIRED_DISTANCE = 0.75
+DESIRED_DISTANCE = 1.0 # m
 
 
 class DroneControl:
@@ -222,6 +227,9 @@ class VideoDetector:
 
 
 if __name__ == "__main__":
+    # Call YOLO just to download the model while connected to the internet
+    # YOLO(MODEL_NAME)
+    # Now connect to the drone. You can comment the above message
     drone_control = DroneControl()
     if FLIGHT_ENABLED:
         drone_control.takeoff()
