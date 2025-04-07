@@ -28,6 +28,11 @@ Install the requirements:
 python -m pip install -r requirements.txt
 ```
 
+Finally, to download the YOLO model, just execute the `download_yolo.py` script. Make sure that the YOLO model name in this file and `tracking_example.py` are the same.
+```bash
+python download_yolo.py
+```
+
 ## Usage
 
 Configure the parameters in the `tracking_example.py` script. Adjust  Important ones are:
@@ -36,17 +41,9 @@ Configure the parameters in the `tracking_example.py` script. Adjust  Important 
 
 **Notice:** The Tello drone is not able to perform movements below 20 cm. Thus, if the desired distance is too small, the drone might not be able to center the object and keep it in frame at the same time. The minimum recommended distance is 0.5 m, the best distance is 1 m if the object is large enough.
 
-1. To download the model. Execute the script while connected to the internet:
+1. Turn on the Tello drone, connect from the computer to the WiFi point it creates (e.g., TELLO-XXXX). Then run the script to check if you can connect, the camera turns on and the drone detects the object.
 
-```bash
-python tracking_example.py
-```
-
-Once the model is downloaded, you can use `Ctrl+C` to exit the script.
-
-2. Turn on the Tello drone, connect from the computer to the WiFi point it creates (e.g., TELLO-XXXX). Then run the script to check if you can connect, the camera turns on and the drone detects the object.
-
-3. Change the variable `FLIGHT_ENABLED` to `True`. Place the drone in a safe space for *taking off*, it will raise 1 m. Then, run the example:
+2. Change the variable `FLIGHT_ENABLED` to `True`. Place the drone in a safe space for *taking off*, it will raise 1 m. Then, run the example:
 
 ```bash
 python tracking_example.py
