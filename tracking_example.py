@@ -12,7 +12,7 @@ IMAGE_SIZE = (940, 720)
 F_X = 940
 
 # Control parameters
-FLIGHT_ENABLED = True
+FLIGHT_ENABLED = False
 SPEED = 10
 CONTROL_HZ = 10  # Hz
 
