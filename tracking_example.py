@@ -62,7 +62,7 @@ class DroneControl:
 
         # The command is only valid between -20cm and 20cm
         is_x_valid = abs(self.control[0]) > 20
-        is_y_valid = abs(self.control[1]) > 20
+        is_y_valid = abs(self.control[1]) > 30
 
         if is_x_valid and is_y_valid:
             print("Sent go_xyz_speed command")
@@ -227,8 +227,6 @@ class VideoDetector:
 
 
 if __name__ == "__main__":
-    # Call YOLO just to download the model while connected to the internet
-    # YOLO(MODEL_NAME)
     # Now connect to the drone. You can comment the above message
     drone_control = DroneControl()
     if FLIGHT_ENABLED:
