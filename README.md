@@ -41,9 +41,16 @@ Configure the parameters in the `tracking_example.py` script. Adjust  Important 
 
 **Notice:** The Tello drone is not able to perform movements below 20 cm. Thus, if the desired distance is too small, the drone might not be able to center the object and keep it in frame at the same time. The minimum recommended distance is 0.5 m, the best distance is 1 m if the object is large enough.
 
-1. Turn on the Tello drone, connect from the computer to the WiFi point it creates (e.g., TELLO-XXXX). Then run the script to check if you can connect, the camera turns on and the drone detects the object.
+### Demo
+Assuming you are in the repository's top folder:
 
-2. Change the variable `FLIGHT_ENABLED` to `True`. Place the drone in a safe space for *taking off*, it will raise 1 m. Then, run the example:
+1. If you didn't do it, source in the Python virtual environment:
+```bash
+source .venv/bin/activate
+```
+2. Turn on the Tello drone and connect from the computer to the WiFi point it creates (e.g., TELLO-XXXX). Then, run the script to check if you can connect, the camera turns on, and the drone detects the object.
+
+3. Change the variable `FLIGHT_ENABLED` to `True`. Place the drone in a safe space for *taking off*, it will raise 1 m. Then, run the example:
 
 ```bash
 python tracking_example.py
