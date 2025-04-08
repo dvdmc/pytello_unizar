@@ -5,14 +5,13 @@ from djitellopy import tello
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-
+import sys
 
 # Camera parameters
 IMAGE_SIZE = (940, 720)
 F_X = 940
 
 # Control parameters
-FLIGHT_ENABLED = False
 SPEED = 10
 CONTROL_HZ = 10  # Hz
 
@@ -227,6 +226,11 @@ class VideoDetector:
 
 
 if __name__ == "__main__":
+    # Read first argument and assign to FLIGHT_ENABLED
+    
+    # Create usage too see if the flag "--flight-enabled" is passed
+    FLIGHT_ENABLED = "--flight-enabled" in sys.argv
+
     # Now connect to the drone. You can comment the above message
     drone_control = DroneControl()
     if FLIGHT_ENABLED:

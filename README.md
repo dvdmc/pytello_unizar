@@ -50,10 +50,16 @@ source .venv/bin/activate
 ```
 2. Turn on the Tello drone and connect from the computer to the WiFi point it creates (e.g., TELLO-XXXX). Then, run the script to check if you can connect, the camera turns on, and the drone detects the object.
 
-3. Change the variable `FLIGHT_ENABLED` to `True`. Place the drone in a safe space for *taking off*, it will raise 1 m. Then, run the example:
-
 ```bash
 python tracking_example.py
 ```
 
+3. Place the drone in a safe space for *taking off*, it will raise 1 m. Then, run the example:
+
+```bash
+python tracking_example.py --flight-enabled
+```
+
 You should show the Tello the object to track. Notice that in order for the object to be in the frame, you need to place it lower than expected.
+
+4. To stop, you can place the objet near the lower part of the frame and it will land. Otherwise you can also `Ctrl+C` on the terminal.
